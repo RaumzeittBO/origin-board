@@ -1,0 +1,29 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { Button, EmptyState, Field, Modal, PageHeader, StatusBadge, labelFor } from "@/components/ui";
+import { Icon } from "@/components/icons";
+import { useWorkspace } from "@/context/workspace-context";
+import type { Priority, Task, TaskStatus } from "@/types";
+
+const columns: TaskStatus[] = ["TODO", "IN_PROGRESS", "REVIEW", "DONE"];
+const priorities: Priority[] = ["LOW", "MEDIUM", "HIGH"];
+const blank = { title: "", description: "", projectId: "", assignedTo: "", status: "TODO" as TaskStatus, priority: "MEDIUM" as Priority };
+
+export default function TasksPage() {
+  const { tasks, projects, team, saveTask, deleteTask, changeTaskStatus } = useWorkspace();
+  const [query, setQuery] = useState(""); const [projectFilter, setProjectFilter] = useState("ALL");
+  const [open, setOpen] = useState(false); const [editing, setEditing] = useState<Task | null>(null); const [form, setForm] = useState(blank);
+  const visible = useMemo(() => tasks.filter((task) => (projectFilter === "ALL" || task.projectId === projectFilter) && `${task.title} ${task.description}`.toLowerCase().includes(query.toLowerCase())), [tasks, projectFilter, query]);
+  const showForm = (task?: Task) => { setEditing(task ?? null); setForm(task ? { title: task.title, description: task.description, projectId: task.projectId, assignedTo: task.assignedTo, status: task.status, priority: task.priority } : { ...blank, projectId: projects[0]?.id ?? "", assignedTo: team[0]?.id ?? "" }); setOpen(true); };
+  const submit = async (event: React.FormEvent) => { event.preventDefault(); await saveTask(form, editing?.id); setOpen(false); };
+  const remove = async (task: Task) => { if (window.confirm(`¿Eliminar la tarea “${task.title}”?`)) await deleteTask(task.id); };
+  const move = (task: Task, delta: number) => { const next = columns[columns.indexOf(task.status)+delta]; if (next) changeTaskStatus(task.id,next); };
+
+  return <>
+    <PageHeader eyebrow="Hacer visible el trabajo" title="Tareas" description="Un tablero simple para avanzar sin perder de vista lo importante." action={<Button icon="plus" onClick={()=>showForm()} disabled={!projects.length}>Nueva tarea</Button>} />
+    <div className="toolbar"><div className="search-box"><Icon name="search" width={17}/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Buscar tareas…" aria-label="Buscar tareas"/></div><select className="filter-select" value={projectFilter} onChange={(e)=>setProjectFilter(e.target.value)} aria-label="Filtrar por proyecto"><option value="ALL">Todos los proyectos</option>{projects.map((project)=><option key={project.id} value={project.id}>{project.name}</option>)}</select></div>
+    {!projects.length ? <section className="panel"><EmptyState title="Primero crea un proyecto" text="Las tareas necesitan estar vinculadas a un proyecto."/></section> : <section className="kanban">{columns.map((status) => { const columnTasks = visible.filter((task)=>task.status===status); return <div className="kanban-column" key={status}><div className="column-head">{labelFor(status)}<span>{columnTasks.length}</span></div>{columnTasks.map((task)=><article className="task-card" key={task.id}><div className="task-card-top"><h3>{task.title}</h3><StatusBadge value={task.priority}/></div><p>{task.description}</p><span className="task-project">{projects.find((project)=>project.id===task.projectId)?.name ?? "Proyecto eliminado"}</span><div className="task-card-foot"><div className="task-owner"><span>{team.find((member)=>member.id===task.assignedTo)?.name.slice(0,2).toUpperCase() ?? "?"}</span>{team.find((member)=>member.id===task.assignedTo)?.name ?? "Sin asignar"}</div><div className="task-move"><button onClick={()=>move(task,-1)} disabled={status==="TODO"} title="Mover atrás">←</button><button onClick={()=>showForm(task)} title="Editar">···</button><button onClick={()=>move(task,1)} disabled={status==="DONE"} title="Mover adelante">→</button></div></div><button className="text-button danger-text" onClick={()=>remove(task)}>Eliminar</button></article>)}</div>; })}</section>}
+    <Modal open={open} onClose={()=>setOpen(false)} title={editing ? "Editar tarea" : "Nueva tarea"} subtitle="Haz que el siguiente paso sea específico y accionable."><form className="form-grid" onSubmit={submit}><Field label="Título"><input required maxLength={100} value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} autoFocus/></Field><Field label="Proyecto"><select required value={form.projectId} onChange={(e)=>setForm({...form,projectId:e.target.value})}>{projects.map((project)=><option key={project.id} value={project.id}>{project.name}</option>)}</select></Field><div className="field-wide"><Field label="Descripción"><textarea required maxLength={500} value={form.description} onChange={(e)=>setForm({...form,description:e.target.value})}/></Field></div><Field label="Asignada a"><select required value={form.assignedTo} onChange={(e)=>setForm({...form,assignedTo:e.target.value})}>{team.map((member)=><option key={member.id} value={member.id}>{member.name}</option>)}</select></Field><Field label="Estado"><select value={form.status} onChange={(e)=>setForm({...form,status:e.target.value as TaskStatus})}>{columns.map((status)=><option key={status} value={status}>{labelFor(status)}</option>)}</select></Field><Field label="Prioridad"><select value={form.priority} onChange={(e)=>setForm({...form,priority:e.target.value as Priority})}>{priorities.map((priority)=><option key={priority} value={priority}>{labelFor(priority)}</option>)}</select></Field><div className="modal-actions"><Button type="button" variant="secondary" onClick={()=>setOpen(false)}>Cancelar</Button><Button type="submit">{editing ? "Guardar cambios" : "Crear tarea"}</Button></div></form></Modal>
+  </>;
+}
