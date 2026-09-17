@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { PageHeader, StatusBadge } from "@/components/ui";
 import { useWorkspace } from "@/context/workspace-context";
+import { DashboardCharts } from "./dashboard-charts";
 
 export default function DashboardPage() {
   const { ideas, projects, tasks, team, user } = useWorkspace();
@@ -24,6 +25,7 @@ export default function DashboardPage() {
       <Metric label="Tareas pendientes" value={pendingTasks} icon="tasks" note={`${tasks.filter((item) => item.status === "DONE").length} completadas`} />
       <Metric label="Miembros del equipo" value={team.length} icon="team" note="Equipo ORIGIN" />
     </section>
+    <DashboardCharts tasks={tasks} projects={projects} />
     <section className="dashboard-grid">
       <div className="panel dashboard-panel"><div className="panel-heading"><div><span className="panel-kicker">MOVIMIENTO</span><h2>Actividad reciente</h2></div><Link href="/ideas">Ver todo <Icon name="arrow" width={14}/></Link></div><div className="activity-list">{recent.map((item) => <Link href={item.href} key={`${item.icon}-${item.id}`} className="activity-row"><span className="activity-icon"><Icon name={item.icon} width={16}/></span><span className="activity-copy"><strong>{item.title}</strong><small>{item.meta}</small></span><time>{formatRelative(item.at)}</time></Link>)}</div></div>
       <div className="panel dashboard-panel"><div className="panel-heading"><div><span className="panel-kicker">EN FOCO</span><h2>Próximos objetivos</h2></div><Link href="/tasks">Ver tablero <Icon name="arrow" width={14}/></Link></div><div className="goal-list">{goals.map((task, index) => <div className="goal-row" key={task.id}><span className="goal-index">0{index + 1}</span><span className="goal-copy"><strong>{task.title}</strong><small>{projects.find((project) => project.id === task.projectId)?.name ?? "Sin proyecto"}</small></span><StatusBadge value={task.status}/></div>)}</div></div>
