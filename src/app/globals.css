@@ -71,6 +71,7 @@ button { cursor: pointer; }
 .filter-select { width: 180px; }
 .status { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 999px; background: #edf1f5; color: #627184; font-size: 9px; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
 .status-validating, .status-in_progress, .status-testing, .status-review { background: #eaf2fb; color: #376d9e; }
+.status-urgent { background: #fff0dd; color: #a55822; }
 .status-approved, .status-completed, .status-done, .status-active { background: #eaf6ef; color: #3e7b5d; }
 .status-rejected, .status-high { background: #fbecee; color: #a04d56; }
 .status-converted_to_project { background: #f0ebf8; color: #715595; }
