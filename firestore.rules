@@ -15,12 +15,46 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Una idea nueva debe identificar al usuario autenticado como autor.
+    function validVote(ideaId) {
+      let before = get(/databases/$(database)/documents/ideas/$(ideaId)).data;
+      let after = getAfter(/databases/$(database)/documents/ideas/$(ideaId)).data;
+      let votePath = /databases/$(database)/documents/users/$(request.auth.uid)/ideaVotes/$(ideaId);
+      let receipt = getAfter(votePath).data;
+      let likes = before.get('likes', 0) + (receipt.vote == 'like' ? 1 : 0);
+      let dislikes = before.get('dislikes', 0) + (receipt.vote == 'dislike' ? 1 : 0);
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'ACTIVE'
+        && before.authorId != request.auth.uid
+        && before.status in ['IDEA', 'VALIDATING']
+        && !exists(votePath)
+        && receipt.keys().hasOnly(['vote']) && receipt.vote in ['like', 'dislike']
+        && after.diff(before).affectedKeys().hasOnly(['likes', 'dislikes', 'status', 'updatedAt'])
+        && after.likes == likes && after.dislikes == dislikes
+        && after.status == (likes >= 2 ? 'APPROVED' : dislikes >= 2 ? 'REJECTED' : before.status);
+    }
+
+    match /users/{userId}/ideaVotes/{ideaId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated() && request.auth.uid == userId && validVote(ideaId);
+      allow update, delete: if false;
+    }
+
     match /ideas/{ideaId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated()
-                    && request.resource.data.authorId == request.auth.uid;
-      allow update, delete: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.status == 'IDEA'
+        && request.resource.data.likes == 0 && request.resource.data.dislikes == 0
+        && request.resource.data.category in ['Juegos', 'Software', 'Pagina Web', 'Apps', 'Upgrade']
+        && request.resource.data.get('referenceImages', []).size() <= 3;
+      allow update: if isAuthenticated() && (validVote(ideaId) || (
+        request.resource.data.authorId == resource.data.authorId
+        && request.resource.data.get('likes', 0) == resource.data.get('likes', 0)
+        && request.resource.data.get('dislikes', 0) == resource.data.get('dislikes', 0)
+        && request.resource.data.category in ['Juegos', 'Software', 'Pagina Web', 'Apps', 'Upgrade']
+        && request.resource.data.get('referenceImages', []).size() <= 3
+        && (request.resource.data.status == resource.data.status
+          || (resource.data.status == 'APPROVED' && request.resource.data.status == 'CONVERTED_TO_PROJECT'))
+      ));
+      allow delete: if isAuthenticated();
     }
 
     // En esta primera base, cualquier miembro autenticado del workspace puede

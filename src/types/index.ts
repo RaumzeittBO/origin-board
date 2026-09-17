@@ -3,7 +3,12 @@ export type ProjectStatus = "PLANNING" | "IN_PROGRESS" | "TESTING" | "PAUSED" | 
 export type TaskStatus = "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
 export type Priority = "LOW" | "MEDIUM" | "HIGH";
 
+export type IdeaVote = "like" | "dislike";
+
 export interface Idea {
+  likes?: number;
+  dislikes?: number;
+  referenceImages?: string[];
   id: string;
   title: string;
   description: string;

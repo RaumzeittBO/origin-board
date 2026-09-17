@@ -13,6 +13,17 @@ export function Icon({ name, ...props }: SVGProps<SVGSVGElement> & { name: strin
     arrow: <><path d="M5 12h14M13 6l6 6-6 6"/></>,
     close: <path d="m6 6 12 12M18 6 6 18"/>,
     more: <><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/></>,
+    game: <><path d="M7 8h10a5 5 0 0 1 4.7 6.7l-1.1 3.1a2 2 0 0 1-3.2.8L15 17H9l-2.4 1.6a2 2 0 0 1-3.2-.8l-1.1-3.1A5 5 0 0 1 7 8Z"/><path d="M7 12v4M5 14h4M16 13h.01M19 15h.01"/></>,
+    code: <path d="m8 9-3 3 3 3M16 9l3 3-3 3M14 5l-4 14"/>,
+    globe: <><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></>,
+    phone: <><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 5h4M11 18h2"/></>,
+    upgrade: <><path d="M12 19V5M6 11l6-6 6 6"/><path d="M5 21h14"/></>,
+    edit: <><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></>,
+    trash: <><path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v5M14 11v5"/></>,
+    convert: <><path d="M20 7h-9a4 4 0 0 0-4 4v9"/><path d="m16 3 4 4-4 4M4 17l3 3 3-3"/></>,
+    check: <path d="m5 12 4 4L19 6"/>,
+    reject: <path d="m7 7 10 10M17 7 7 17"/>,
+    vote: <><path d="M4 4h16v12H5.5L4 18Z"/><path d="M8 8h8M8 12h5"/></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{paths[name]}</svg>;
 }
