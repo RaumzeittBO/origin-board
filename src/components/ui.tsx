@@ -26,6 +26,6 @@ export function Field({ label, children }: { label: string; children: React.Reac
 
 export function EmptyState({ title, text }: { title: string; text: string }) { return <div className="empty-state"><div className="empty-orbit">O</div><h3>{title}</h3><p>{text}</p></div>; }
 
-const labels: Record<string, string> = { IDEA: "Idea", VALIDATING: "Validando", APPROVED: "Aprobada", REJECTED: "Rechazada", CONVERTED_TO_PROJECT: "Convertida", PLANNING: "Planificación", IN_PROGRESS: "En progreso", TESTING: "Pruebas", PAUSED: "Pausado", COMPLETED: "Completado", TODO: "Por hacer", REVIEW: "Revisión", DONE: "Hecha", LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", ACTIVE: "Activo", INACTIVE: "Inactivo" };
+const labels: Record<string, string> = { IDEA: "Idea", VALIDATING: "Validando", APPROVED: "Aprobada", REJECTED: "Rechazada", CONVERTED_TO_PROJECT: "Convertida", PLANNING: "Planificación", IN_PROGRESS: "En progreso", TESTING: "Pruebas", PAUSED: "Pausado", COMPLETED: "Completado", TODO: "Por hacer", REVIEW: "Revisión", URGENT: "Terminar urgente", DONE: "Hecha", LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", ACTIVE: "Activo", INACTIVE: "Inactivo" };
 export function StatusBadge({ value }: { value: string }) { return <span className={`status status-${value.toLowerCase()}`}>{labels[value] ?? value}</span>; }
 export const labelFor = (value: string) => labels[value] ?? value;

@@ -1,6 +1,6 @@
 export type IdeaStatus = "IDEA" | "VALIDATING" | "APPROVED" | "REJECTED" | "CONVERTED_TO_PROJECT";
 export type ProjectStatus = "PLANNING" | "IN_PROGRESS" | "TESTING" | "PAUSED" | "COMPLETED";
-export type TaskStatus = "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
+export type TaskStatus = "TODO" | "IN_PROGRESS" | "REVIEW" | "URGENT" | "DONE";
 export type Priority = "LOW" | "MEDIUM" | "HIGH";
 
 export type IdeaVote = "like" | "dislike";
@@ -42,6 +42,8 @@ export interface Task {
   assignedTo: string;
   status: TaskStatus;
   priority: Priority;
+  fastTrack?: boolean;
+  completionVotes?: Record<string, "SUCCESS" | "NEEDS_WORK">;
   createdAt: string;
   updatedAt: string;
 }

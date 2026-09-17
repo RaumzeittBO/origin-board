@@ -7,7 +7,7 @@ import type { Idea, IdeaVote, LocalUser, Project, Task, TeamMember, WorkspaceDat
 
 type NewIdea = Pick<Idea, "title" | "description" | "category" | "status" | "referenceImages">;
 type NewProject = Pick<Project, "name" | "description" | "status" | "priority" | "members"> & { sourceIdeaId?: string };
-type NewTask = Pick<Task, "title" | "description" | "projectId" | "assignedTo" | "status" | "priority">;
+type NewTask = Pick<Task, "title" | "description" | "projectId" | "assignedTo" | "status" | "priority" | "fastTrack">;
 
 interface WorkspaceContextValue extends WorkspaceData {
   ideaVotes: Record<string, IdeaVote>;
@@ -25,6 +25,7 @@ interface WorkspaceContextValue extends WorkspaceData {
   saveTask: (values: NewTask, id?: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   changeTaskStatus: (id: string, status: Task["status"]) => Promise<void>;
+  voteTaskCompletion: (id: string, vote: "SUCCESS" | "NEEDS_WORK") => Promise<void>;
   saveMember: (member: TeamMember) => Promise<void>;
 }
 
@@ -111,7 +112,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const saveTask = async (values: NewTask, id?: string) => {
     const existing = data.tasks.find((item) => item.id === id);
     const now = new Date().toISOString();
-    await workspaceRepository.saveTask({ ...values, id: id ?? crypto.randomUUID(), createdAt: existing?.createdAt ?? now, updatedAt: now });
+    await workspaceRepository.saveTask({ ...values, fastTrack: values.status === "URGENT", completionVotes: existing?.completionVotes ?? {}, id: id ?? crypto.randomUUID(), createdAt: existing?.createdAt ?? now, updatedAt: now });
     await refresh();
   };
 
@@ -119,7 +120,19 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const changeTaskStatus = async (id: string, status: Task["status"]) => {
     const task = data.tasks.find((item) => item.id === id);
     if (!task) return;
-    await workspaceRepository.saveTask({ ...task, status, updatedAt: new Date().toISOString() });
+    await workspaceRepository.saveTask({ ...task, status, fastTrack: status === "URGENT", updatedAt: new Date().toISOString() });
+    await refresh();
+  };
+
+  const voteTaskCompletion = async (id: string, vote: "SUCCESS" | "NEEDS_WORK") => {
+    const task = data.tasks.find((item) => item.id === id);
+    if (!task) return;
+    const voterId = user?.id ?? demoUser.id;
+    await workspaceRepository.saveTask({
+      ...task,
+      completionVotes: { ...task.completionVotes, [voterId]: vote },
+      updatedAt: new Date().toISOString(),
+    });
     await refresh();
   };
 
@@ -133,7 +146,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const saveMember = async (member: TeamMember) => { await workspaceRepository.saveTeamMember(member); await refresh(); };
 
-  const value = { ...data, ideaVotes, voteIdea, user, loading, mode: persistenceMode, loginDemo, logout, saveIdea, deleteIdea, convertIdea, saveProject, deleteProject, saveTask, deleteTask, changeTaskStatus, saveMember };
+  const value = { ...data, ideaVotes, voteIdea, user, loading, mode: persistenceMode, loginDemo, logout, saveIdea, deleteIdea, convertIdea, saveProject, deleteProject, saveTask, deleteTask, changeTaskStatus, voteTaskCompletion, saveMember };
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
 
