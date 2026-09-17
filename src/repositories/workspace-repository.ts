@@ -1,6 +1,8 @@
-import type { Idea, Project, Task, TeamMember, WorkspaceData } from "@/types";
+import type { Idea, IdeaVote, Project, Task, TeamMember, WorkspaceData } from "@/types";
 
 export interface WorkspaceRepository {
+  getIdeaVotes(userId: string): Promise<Record<string, IdeaVote>>;
+  voteIdea(id: string, userId: string, vote: IdeaVote): Promise<void>;
   load(): Promise<WorkspaceData>;
   saveIdea(item: Idea): Promise<void>;
   deleteIdea(id: string): Promise<void>;

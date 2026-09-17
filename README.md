@@ -128,3 +128,13 @@ src/
 ## Información necesaria para la siguiente etapa
 
 Consulta [SETUP_NEXT_STEPS.md](./SETUP_NEXT_STEPS.md). Allí se especifican los datos mínimos de GitHub, Firebase y Vercel que deberá aportar el propietario, sin solicitar secretos innecesarios.
+
+## Votación de ideas
+
+Las categorías disponibles son Juegos, Software, Pagina Web, Apps y Upgrade. Cada idea puede incluir opcionalmente hasta tres imágenes de referencia, optimizadas antes de guardarse. Cada miembro activo distinto del autor puede emitir un único like o dislike. El primer total que alcance 2 cierra la votación: APPROVED o REJECTED. Solo las ideas aprobadas pueden convertirse en proyectos. Editar una idea conserva sus votos y estado. Las categorías antiguas deben seleccionarse al editar.
+
+En Firebase los totales son públicos para los miembros, mientras los comprobantes se guardan en users/{uid}/ideaVotes/{ideaId}, legibles únicamente por su dueño. La transacción y firestore.rules impiden votos duplicados y cambios arbitrarios de totales. Las reglas deben desplegarse antes de habilitar la función en Firebase. El administrador del proyecto conserva acceso a los datos.
+
+El acceso actual de la aplicación sigue siendo una demo de Fabrizio: no hay autenticación Firebase implementada. Para usar la votación entre personas y dispositivos es necesario conectar Firebase Authentication y vincular cada perfil de miembro con su UID. En modo local los datos y comprobantes se guardan en este navegador; no ofrecen anonimato ni protección contra manipulación de localStorage.
+
+Pruebas de lógica y persistencia local: node --test tests/idea-voting.test.cjs.

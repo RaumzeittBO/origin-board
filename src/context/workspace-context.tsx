@@ -3,13 +3,15 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { demoUser } from "@/data/demo-data";
 import { persistenceMode, workspaceRepository } from "@/repositories";
-import type { Idea, LocalUser, Project, Task, TeamMember, WorkspaceData } from "@/types";
+import type { Idea, IdeaVote, LocalUser, Project, Task, TeamMember, WorkspaceData } from "@/types";
 
-type NewIdea = Pick<Idea, "title" | "description" | "category" | "status">;
+type NewIdea = Pick<Idea, "title" | "description" | "category" | "status" | "referenceImages">;
 type NewProject = Pick<Project, "name" | "description" | "status" | "priority" | "members"> & { sourceIdeaId?: string };
 type NewTask = Pick<Task, "title" | "description" | "projectId" | "assignedTo" | "status" | "priority">;
 
 interface WorkspaceContextValue extends WorkspaceData {
+  ideaVotes: Record<string, IdeaVote>;
+  voteIdea: (id: string, vote: IdeaVote) => Promise<void>;
   user: LocalUser | null;
   loading: boolean;
   mode: "local" | "firebase";
@@ -33,6 +35,7 @@ const USER_KEY = "origin-hub-user";
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<WorkspaceData>(emptyData);
   const [user, setUser] = useState<LocalUser | null>(null);
+  const [ideaVotes, setIdeaVotes] = useState<Record<string, IdeaVote>>({});
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => setData(await workspaceRepository.load()), []);
@@ -48,6 +51,25 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     hydrate();
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    const sync = async () => {
+      if (!user) { setIdeaVotes({}); return; }
+      try {
+        const [workspace, votes] = await Promise.all([workspaceRepository.load(), workspaceRepository.getIdeaVotes(user.id)]);
+        if (active) { setData(workspace); setIdeaVotes(votes); }
+      } catch (error) { console.error("No se pudo actualizar la votación", error); }
+    };
+    void sync();
+    const interval = window.setInterval(sync, 5000);
+    return () => { active = false; window.clearInterval(interval); };
+  }, [user]);
+  const voteIdea = async (id: string, vote: IdeaVote) => {
+    if (!user) throw new Error("Inicia sesión para votar.");
+    await workspaceRepository.voteIdea(id, user.id, vote);
+    setIdeaVotes(await workspaceRepository.getIdeaVotes(user.id));
+    await refresh();
+  };
   const loginDemo = () => {
     window.localStorage.setItem(USER_KEY, JSON.stringify(demoUser));
     setUser(demoUser);
@@ -103,7 +125,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const convertIdea = async (id: string) => {
     const idea = data.ideas.find((item) => item.id === id);
-    if (!idea || idea.status === "CONVERTED_TO_PROJECT") return;
+    if (!idea || idea.status !== "APPROVED") return;
     await saveProject({ name: idea.title, description: idea.description, status: "PLANNING", priority: "MEDIUM", members: [user?.id ?? demoUser.id], sourceIdeaId: idea.id });
     await workspaceRepository.saveIdea({ ...idea, status: "CONVERTED_TO_PROJECT", updatedAt: new Date().toISOString() });
     await refresh();
@@ -111,7 +133,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const saveMember = async (member: TeamMember) => { await workspaceRepository.saveTeamMember(member); await refresh(); };
 
-  const value = { ...data, user, loading, mode: persistenceMode, loginDemo, logout, saveIdea, deleteIdea, convertIdea, saveProject, deleteProject, saveTask, deleteTask, changeTaskStatus, saveMember };
+  const value = { ...data, ideaVotes, voteIdea, user, loading, mode: persistenceMode, loginDemo, logout, saveIdea, deleteIdea, convertIdea, saveProject, deleteProject, saveTask, deleteTask, changeTaskStatus, saveMember };
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
 
