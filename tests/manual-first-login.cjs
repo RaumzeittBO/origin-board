@@ -61,6 +61,7 @@ async function activation(token) {
     assert.equal(login.data.localId, uid);
     const beforeChange = await auth.getUser(uid);
     const premature = await activation(login.data.idToken);
+    console.log("premature-response", premature);
     assert.equal(premature.status, 409, "activation before password change must be rejected");
     assert.equal((await db.doc(`users/${uid}`).get()).get("mustChangePassword"), true);
     console.log("premature-activation-rejected");
