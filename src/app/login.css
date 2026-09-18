@@ -13,6 +13,20 @@
 .node-a { left: 35px; top: 230px; }.node-b { right: 75px; top: 72px; width: 7px; height: 7px; }.node-c { right: 29px; bottom: 163px; background: var(--navy); }
 .login-panel { display: grid; place-items: center; padding: 50px; background: #fff; }
 .login-card { width: min(380px, 100%); }
+.login-card .field { margin-bottom: 17px; }
+.login-card .field input { height: 46px; font-size: 13px; transition: border-color .2s, box-shadow .2s; }
+.login-options { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 4px 0 23px; font-size: 11px; color: var(--muted); }
+.login-options label { display: flex; gap: 7px; align-items: center; }
+.login-options button, .login-back { border: 0; background: none; color: var(--blue); font-size: 11px; }
+.login-back { margin-top: 18px; padding: 4px 0; }
+.form-message { padding: 10px 12px; border-radius: 7px; background: #edf4fb; color: var(--navy); font-size: 11px; line-height: 1.5; }
+.login-story .logo-wrap { animation: reveal-logo .7s ease-out both; }
+.login-card { animation: reveal-form .7s .2s ease-out both; }
+.origin-core { animation: float-origin 6s ease-in-out infinite; }
+@keyframes reveal-logo { from { opacity: 0; transform: translateY(10px); } }
+@keyframes reveal-form { from { opacity: 0; transform: translateY(14px); } }
+@keyframes float-origin { 50% { transform: translateY(-7px); } }
+@media (prefers-reduced-motion: reduce) { .login-story .logo-wrap, .login-card, .origin-core { animation: none; } }
 .login-index { color: var(--blue); font-size: 9px; font-weight: 800; letter-spacing: .2em; }
 .login-card h2 { margin: 18px 0 11px; color: var(--navy); font: 700 34px/1.16 var(--font-manrope); letter-spacing: -.045em; }
 .login-card > p { margin: 0 0 35px; color: var(--muted); font-size: 13px; }

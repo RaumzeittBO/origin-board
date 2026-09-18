@@ -35,22 +35,3 @@ test('author, duplicate, invalid and closed votes are rejected', () => {
     assert.throws(() => applyIdeaVote({ ...idea, status }, 'a', 'like', false));
   }
 });
-test('repository persists private receipts, rejects duplicate members and preserves counts when editing', async () => {
-  const storage = new Map();
-  global.window = { localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) } };
-  Object.defineProperty(global.navigator, 'locks', { configurable: true, value: { request: async (_key, action) => action() } });
-  const { LocalWorkspaceRepository } = load('src/repositories/local-workspace-repository.ts');
-  const repo = new LocalWorkspaceRepository();
-  await repo.saveIdea({ ...idea, category: 'Software' });
-  await repo.voteIdea('idea', 'user-dario', 'like');
-  await assert.rejects(repo.voteIdea('idea', 'user-dario', 'dislike'));
-  await assert.rejects(repo.voteIdea('idea', 'unknown', 'like'));
-  await repo.voteIdea('idea', 'user-helmy', 'like');
-  await repo.saveIdea({ ...idea, category: 'Apps', title: 'Edited', likes: 0 });
-  const saved = (await repo.load()).ideas.find(item => item.id === 'idea');
-  assert.equal(saved.likes, 2);
-  assert.equal(saved.status, 'APPROVED');
-  assert.deepEqual(await new LocalWorkspaceRepository().getIdeaVotes('user-dario'), { idea: 'like' });
-  assert.deepEqual(await repo.getIdeaVotes('user-santino'), {});
-  assert.equal('votes' in saved, false);
-});

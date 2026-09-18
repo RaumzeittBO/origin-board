@@ -1,7 +1,7 @@
 import { applyIdeaVote } from "@/lib/idea-voting";
-import { collection, deleteDoc, doc, getDocs, setDoc, runTransaction } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDocs, setDoc, runTransaction, query, where, writeBatch } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
-import type { Idea, IdeaVote, Project, Task, TeamMember, WorkspaceData } from "@/types";
+import type { Idea, IdeaVote, Project, Task, OriginUser, WorkspaceData } from "@/types";
 import type { WorkspaceRepository } from "./workspace-repository";
 
 export class FirebaseWorkspaceRepository implements WorkspaceRepository {
@@ -17,10 +17,10 @@ export class FirebaseWorkspaceRepository implements WorkspaceRepository {
   }
 
   async load(): Promise<WorkspaceData> {
-    const [ideas, projects, tasks, team] = await Promise.all([
-      this.list<Idea>("ideas"), this.list<Project>("projects"), this.list<Task>("tasks"), this.list<TeamMember>("users"),
+    const [ideas, projects, tasks, users] = await Promise.all([
+      this.list<Idea>("ideas"), this.list<Project>("projects"), this.list<Task>("tasks"), this.list<OriginUser>("users"),
     ]);
-    return { ideas, projects, tasks, team };
+    return { ideas, projects, tasks, users, team: users.map((person) => ({ id: person.uid, name: person.displayName, area: person.area ?? "Equipo ORIGIN", status: person.status === "active" ? "ACTIVE" : "INACTIVE" })) };
   }
 
   private async save<T extends { id: string }>(name: string, item: T) { await setDoc(doc(this.db(), name, item.id), item); }
@@ -51,8 +51,15 @@ export class FirebaseWorkspaceRepository implements WorkspaceRepository {
   }
   async deleteIdea(id: string) { return this.remove("ideas", id); }
   async saveProject(item: Project) { return this.save("projects", item); }
-  async deleteProject(id: string) { return this.remove("projects", id); }
+  async deleteProject(id: string) {
+    const related = await getDocs(query(collection(this.db(), "tasks"), where("projectId", "==", id)));
+    for (let index = 0; index < related.docs.length; index += 400) {
+      const batch = writeBatch(this.db());
+      related.docs.slice(index, index + 400).forEach((item) => batch.delete(item.ref));
+      await batch.commit();
+    }
+    await this.remove("projects", id);
+  }
   async saveTask(item: Task) { return this.save("tasks", item); }
   async deleteTask(id: string) { return this.remove("tasks", id); }
-  async saveTeamMember(item: TeamMember) { return this.save("users", item); }
 }

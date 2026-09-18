@@ -55,11 +55,23 @@ export interface TeamMember {
   status: "ACTIVE" | "INACTIVE";
 }
 
+export interface OriginUser {
+  uid: string;
+  email: string;
+  displayName: string;
+  status: "active" | "inactive";
+  mustChangePassword: boolean;
+  createdAt: string;
+  updatedAt: string;
+  area?: string;
+}
+
 export interface WorkspaceData {
   ideas: Idea[];
   projects: Project[];
   tasks: Task[];
   team: TeamMember[];
+  users: OriginUser[];
 }
 
 export interface LocalUser {

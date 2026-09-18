@@ -1,140 +1,51 @@
 # ORIGIN Hub
 
-ORIGIN Hub es la plataforma interna de ORIGIN para registrar ideas, convertirlas en proyectos, organizar tareas y mantener visible el trabajo del equipo. Este primer MVP funciona por completo en local y está preparado para incorporar Firebase, GitHub y Vercel cuando existan los proyectos definitivos.
+Espacio privado del equipo ORIGIN para ideas, proyectos y tareas. Next.js 16, Firebase Authentication, Cloud Firestore y Firebase Admin en rutas de servidor. Lee [ORIGIN_WORKFLOW.md](./ORIGIN_WORKFLOW.md) antes de trabajar.
 
-## Stack
+## Configuración
 
-- Next.js con App Router
-- TypeScript
-- Tailwind CSS
-- ESLint
-- Firebase SDK
-- Persistencia local desacoplada mediante repositorios
-
-## Instalación
-
-Requisitos: Node.js 20 o superior y npm.
+Requisitos: Node.js 20+, npm y Java 21 para el emulador.
 
 ```bash
 npm install
+npm run lint
+npm run build
+npm run test:rules
 npm run dev
 ```
 
-Abre [http://localhost:3000](http://localhost:3000) y selecciona **Entrar en modo demo**.
+Abre http://localhost:3000. No hay registro público ni modo demo. La aplicación necesita un usuario de Firebase Authentication y un documento `users/{uid}` activo.
 
-Para comprobar una versión de producción:
+Copia `.env.example` a `.env.local` y completa las seis variables web. Para operaciones Admin, usa las tres variables `FIREBASE_ADMIN_*` solo en el servidor. Localmente también puedes usar `FIREBASE_ADMIN_PROJECT_ID` junto con `GOOGLE_APPLICATION_CREDENTIALS`, apuntando a un JSON guardado fuera del repositorio. La clave privada debe conservar sus saltos de línea o codificarse con `\n` literales; nunca se debe compartir ni añadir a Git. El Project ID de Admin debe coincidir con el de la Web App. En Vercel configura las nueve variables (sin `GOOGLE_APPLICATION_CREDENTIALS`) para cada entorno que vayas a desplegar y vuelve a desplegar para aplicar cambios.
 
-```bash
-npm run lint
-npm run build
-npm start
+## Primer usuario
+
+En Firebase Console, habilita Authentication > Sign-in method > Email/Password. Crea la cuenta inicial en Authentication > Users > Add user, con el correo y la contraseña temporal facilitados por el dueño del proyecto. Copia su UID. En Firestore Database > Data crea `users/{uid}` con:
+
+```json
+{
+  "uid": "UID_REAL",
+  "email": "CORREO_REAL",
+  "displayName": "Fabrizio Salamanca",
+  "status": "active",
+  "mustChangePassword": true,
+  "createdAt": "FECHA_ISO",
+  "updatedAt": "FECHA_ISO"
+}
 ```
 
-## Variables de entorno
+Las fechas deben ser cadenas ISO 8601. No guardes ninguna contraseña en Firestore. Tras iniciar sesión, la aplicación exige cambiarla. Si el servicio Admin todavía no tiene credenciales, la creación de otros usuarios mostrará un error de configuración y no cambiará la sesión actual.
 
-Copia `.env.example` como `.env.local` solo cuando tengas la configuración Web App real de Firebase:
+Las credenciales Admin se obtienen en Firebase Console > Configuración del proyecto > Cuentas de servicio > Generar nueva clave privada. Del JSON descarga `project_id`, `client_email` y `private_key` a las variables de servidor correspondientes; conserva el JSON fuera del repositorio y nunca lo subas. En Vercel introduce las variables en Project Settings > Environment Variables para Production y los otros entornos que uses. Verifica Authentication > Settings > Authorized domains (localhost y dominio de Vercel), y Authentication > Templates > Password reset para el correo de restablecimiento.
 
-```bash
-cp .env.example .env.local
-```
+## Datos y reglas
 
-En PowerShell:
+Colecciones: `users`, `users/{uid}/ideaVotes`, `ideas`, `projects` y `tasks`. Los miembros activos con contraseña establecida tienen los mismos permisos funcionales. Firestore niega todas las escrituras de perfiles desde clientes; la creación y gestión de usuarios pasa por Firebase Admin en `/api/users`. El cambio de contraseña temporal confirma el perfil por `/api/account/password-complete`.
 
-```powershell
-Copy-Item .env.example .env.local
-```
+`firestore.rules` es la fuente de verdad. Compara el diff y ejecuta `npm run test:rules` antes de desplegar, usando explícitamente `firebase deploy --only firestore:rules --project originboard-db142` después de verificar el proyecto y el usuario inicial. Las pruebas usan un proyecto ficticio y el emulador; no tocan producción. No migres automáticamente los datos de demo del navegador.
 
-Completa estas variables sin comitear el archivo:
+El inicio de sesión utiliza persistencia local o de sesión según «Recordarme», sin almacenar contraseñas. La recuperación envía el enlace oficial de Firebase; no recupera una contraseña anterior. Las páginas privadas se ocultan mientras se valida la sesión. Los cambios en Firestore se observan en tiempo real.
 
-```dotenv
-NEXT_PUBLIC_FIREBASE_API_KEY=
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
-NEXT_PUBLIC_FIREBASE_APP_ID=
-```
+## Votación
 
-## Modo local
-
-Si las seis variables de Firebase no están completas, la aplicación utiliza `LocalWorkspaceRepository`. Los datos se guardan en `localStorage` bajo una única clave y sobreviven a las recargas del navegador. La interfaz consume el contrato `WorkspaceRepository`, no accede directamente a `localStorage`.
-
-El usuario demo es Fabrizio, con el rol **Founder / Product & Technology**. No utiliza una contraseña ficticia. Los datos iniciales pueden editarse o eliminarse desde la propia aplicación.
-
-## Firebase futuro
-
-`src/lib/firebase.ts` solo lee variables de entorno y no contiene credenciales. El selector de repositorios activa `FirebaseWorkspaceRepository` cuando la configuración está completa. Las colecciones previstas son:
-
-| Colección | Contenido principal |
-| --- | --- |
-| `users` | `id`, `name`, `area`, `status` |
-| `ideas` | `id`, `title`, `description`, `category`, `status`, autor y fechas |
-| `projects` | `id`, `name`, `description`, `status`, `priority`, propietario, miembros, `sourceIdeaId` y fechas |
-| `tasks` | `id`, `title`, `description`, `projectId`, asignación, estado, prioridad y fechas |
-
-`firestore.rules` contiene una base restrictiva: bloquea usuarios anónimos, exige autor en ideas y deja puntos claros para incorporar roles y workspaces. Debe revisarse y probarse en el emulador antes de desplegar. `firebase.json` referencia esas reglas sin asociar el código a ningún Project ID. `.firebaserc.example` es solo una plantilla.
-
-Antes de activar Firebase en producción también se sustituirá la sesión demo por Firebase Authentication. Las reglas incluidas ya asumen usuarios autenticados, por lo que no deben publicarse hasta completar ese flujo.
-
-## GitHub futuro
-
-El repositorio local no tiene ningún remote inventado. Cuando exista el repositorio definitivo:
-
-```bash
-git remote add origin URL_REAL
-git push -u origin main
-```
-
-Recomendación de ramas:
-
-- `main`: versión estable y verificada.
-- `feature/nombre-tarea`: una rama breve por cambio o funcionalidad.
-
-## Vercel futuro
-
-No hace falta `vercel.json`; Vercel detecta Next.js automáticamente. Al crear el proyecto, configura las mismas seis variables `NEXT_PUBLIC_FIREBASE_*` en los entornos necesarios y ejecuta un despliegue después de que Firebase Authentication, Firestore y sus reglas estén listos.
-
-## Arquitectura
-
-```text
-src/
-├── app/                 # Rutas, layouts y estilos
-├── components/          # Shell, navegación y UI reutilizable
-├── context/             # Estado y operaciones de la aplicación
-├── data/                # Datos demo editables
-├── lib/                 # Inicialización de Firebase
-├── repositories/        # Contrato, repositorio local y Firestore
-└── types/                # Modelos de dominio
-```
-
-## Flujo de trabajo diario del equipo
-
-1. Actualiza `main`: `git pull origin main`.
-2. Crea tu rama: `git switch -c feature/nombre-tarea`.
-3. Trabaja y prueba la aplicación con `npm run dev`.
-4. Antes de compartir, ejecuta `npm run lint` y `npm run build`.
-5. Guarda cambios: `git add .` y `git commit -m "tipo: descripción breve"`.
-6. Publica tu rama: `git push -u origin feature/nombre-tarea`.
-7. Abre un Pull Request para revisión. Cuando sea aprobado, intégralo en `main`.
-
-## Nunca hacer
-
-- nunca subir `.env.local`
-- nunca subir contraseñas
-- nunca subir API Keys privadas
-- nunca trabajar directamente sobre `main` cuando ya exista colaboración
-- nunca hacer push antes de verificar que la aplicación funciona
-
-## Información necesaria para la siguiente etapa
-
-Consulta [SETUP_NEXT_STEPS.md](./SETUP_NEXT_STEPS.md). Allí se especifican los datos mínimos de GitHub, Firebase y Vercel que deberá aportar el propietario, sin solicitar secretos innecesarios.
-
-## Votación de ideas
-
-Las categorías disponibles son Juegos, Software, Pagina Web, Apps y Upgrade. Cada idea puede incluir opcionalmente hasta tres imágenes de referencia, optimizadas antes de guardarse. Cada miembro activo distinto del autor puede emitir un único like o dislike. El primer total que alcance 2 cierra la votación: APPROVED o REJECTED. Solo las ideas aprobadas pueden convertirse en proyectos. Editar una idea conserva sus votos y estado. Las categorías antiguas deben seleccionarse al editar.
-
-En Firebase los totales son públicos para los miembros, mientras los comprobantes se guardan en users/{uid}/ideaVotes/{ideaId}, legibles únicamente por su dueño. La transacción y firestore.rules impiden votos duplicados y cambios arbitrarios de totales. Las reglas deben desplegarse antes de habilitar la función en Firebase. El administrador del proyecto conserva acceso a los datos.
-
-El acceso actual de la aplicación sigue siendo una demo de Fabrizio: no hay autenticación Firebase implementada. Para usar la votación entre personas y dispositivos es necesario conectar Firebase Authentication y vincular cada perfil de miembro con su UID. En modo local los datos y comprobantes se guardan en este navegador; no ofrecen anonimato ni protección contra manipulación de localStorage.
-
-Pruebas de lógica y persistencia local: node --test tests/idea-voting.test.cjs.
+Un miembro activo distinto del autor puede votar una vez por idea. El comprobante privado vive en `users/{uid}/ideaVotes/{ideaId}` y la transacción actualiza los totales. Al llegar a dos apoyos o rechazos, la idea se aprueba o rechaza. Las ideas aprobadas pueden convertirse en proyectos.
