@@ -39,8 +39,16 @@ export function PasswordForm({ mandatory = false }: { mandatory?: boolean }) {
     console.log("[activation] response-status", response.status);
 
     if (!response.ok) {
-      const result = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new Error(result.error ?? `Error del servidor (${response.status})`);
+      const result = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        stage?: string;
+        code?: string;
+        message?: string;
+        error?: string;
+      };
+      const detail = result.message || result.error || `Error del servidor (${response.status})`;
+      const fullMsg = result.stage ? `[${result.stage}] ${result.code ? result.code + ": " : ""}${detail}` : detail;
+      throw new Error(fullMsg);
     }
 
     console.log("[activation] completed");
