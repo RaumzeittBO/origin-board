@@ -4,15 +4,21 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
 function adminApp() {
-  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  if (!projectId || projectId !== process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID)
-    throw new Error("Configuración administrativa incompleta o proyecto incorrecto.");
-  if (Boolean(clientEmail) !== Boolean(privateKey)) throw new Error("Configuración administrativa incompleta o proyecto incorrecto.");
-  if (!clientEmail && !process.env.GOOGLE_APPLICATION_CREDENTIALS) throw new Error("Configuración administrativa incompleta o proyecto incorrecto.");
-  const credential = clientEmail && privateKey ? cert({ projectId, clientEmail, privateKey }) : applicationDefault();
-  return getApps().length ? getApp() : initializeApp({ credential, projectId });
+  const existing = getApps()[0];
+  if (existing) return getApp(existing.name);
+
+  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID?.trim();
+  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL?.trim();
+  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.trim().replace(/\\n/g, "\n");
+  if (!projectId) throw new Error("FIREBASE_ADMIN_PROJECT_ID is missing");
+  if (Boolean(clientEmail) !== Boolean(privateKey)) throw new Error("Firebase Admin credentials are incomplete");
+
+  // Vercel uses explicit credentials. Locally GOOGLE_APPLICATION_CREDENTIALS
+  // supplies the same service account without putting the key in .env.local.
+  const credential = clientEmail && privateKey
+    ? cert({ projectId, clientEmail, privateKey })
+    : applicationDefault();
+  return initializeApp({ credential, projectId });
 }
 
 export function adminAuth() { return getAuth(adminApp()); }
