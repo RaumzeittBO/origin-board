@@ -10,23 +10,10 @@ export function PasswordForm({ mandatory = false }: { mandatory?: boolean }) {
   const [confirm, setConfirm] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [passwordAlreadyUpdated, setPasswordAlreadyUpdated] = useState(() => {
-    try {
-      if (typeof window !== "undefined" && sessionStorage.getItem("origin_pwd_already_updated") === "true") {
-        return true;
-      }
-    } catch {
-      // sessionStorage no disponible
-    }
-    return false;
-  });
+  const [passwordAlreadyUpdated, setPasswordAlreadyUpdated] = useState(false);
 
   const completeActivation = async (account: User) => {
-    console.log("[activation] getting-token");
     const token = await account.getIdToken(true);
-    console.log("[activation] token-obtained");
-
-    console.log("[activation] sending-request");
     const response = await fetch("/api/auth/complete-first-login", {
       method: "POST",
       headers: {
@@ -36,33 +23,20 @@ export function PasswordForm({ mandatory = false }: { mandatory?: boolean }) {
       credentials: "same-origin",
     });
 
-    console.log("[activation] response-status", response.status);
-
     if (!response.ok) {
       const result = (await response.json().catch(() => ({}))) as {
-        ok?: boolean;
-        stage?: string;
-        code?: string;
-        message?: string;
         error?: string;
       };
-      const detail = result.message || result.error || `Error del servidor (${response.status})`;
-      const fullMsg = result.stage ? `[${result.stage}] ${result.code ? result.code + ": " : ""}${detail}` : detail;
-      throw new Error(fullMsg);
+      throw new Error(result.error || `Error del servidor (${response.status})`);
     }
-
-    console.log("[activation] completed");
   };
 
   const handleOnlyActivation = async (e?: React.MouseEvent | React.FormEvent) => {
     if (e) e.preventDefault();
-    console.log("[activation] button-click");
     setMessage("");
 
     const auth = getFirebaseAuth();
     const account = auth?.currentUser;
-    console.log("[activation] user-present", Boolean(account));
-
     if (!account) {
       setMessage("No se detectó una sesión activa. Vuelve a iniciar sesión.");
       return;
@@ -71,25 +45,10 @@ export function PasswordForm({ mandatory = false }: { mandatory?: boolean }) {
     setBusy(true);
     try {
       await completeActivation(account);
-      try {
-        sessionStorage.removeItem("origin_pwd_already_updated");
-      } catch {}
       setPasswordAlreadyUpdated(false);
       setMessage("Activación completada con éxito. Redirigiendo…");
     } catch (error) {
-      const code = (error as { code?: string }).code;
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      console.error("[activation] error", {
-        stage: "completeActivation",
-        code,
-        message: errorMsg,
-      });
-
-      setMessage(
-        errorMsg.includes("Error del servidor") || errorMsg.includes("No autorizado")
-          ? errorMsg
-          : "Tu contraseña ya fue actualizada, pero no pudimos finalizar la configuración de tu cuenta. Intenta completar la activación nuevamente."
-      );
+      setMessage(error instanceof Error ? error.message : "No se pudo completar la activación. Inténtalo nuevamente.");
     } finally {
       setBusy(false);
     }
@@ -142,16 +101,10 @@ export function PasswordForm({ mandatory = false }: { mandatory?: boolean }) {
       stage = "updatePassword";
       await updatePassword(account, next);
       setPasswordAlreadyUpdated(true);
-      try {
-        sessionStorage.setItem("origin_pwd_already_updated", "true");
-      } catch {}
 
       if (mandatory) {
         stage = "completeActivation";
         await completeActivation(account);
-        try {
-          sessionStorage.removeItem("origin_pwd_already_updated");
-        } catch {}
         setPasswordAlreadyUpdated(false);
       }
 
@@ -162,12 +115,6 @@ export function PasswordForm({ mandatory = false }: { mandatory?: boolean }) {
     } catch (error) {
       const code = (error as { code?: string }).code;
       const errorMsg = error instanceof Error ? error.message : String(error);
-
-      console.error("[activation] error", {
-        stage,
-        code,
-        message: errorMsg,
-      });
 
       if (stage === "completeActivation" || passwordAlreadyUpdated) {
         setMessage(
@@ -259,9 +206,6 @@ export function PasswordForm({ mandatory = false }: { mandatory?: boolean }) {
               style={{ fontSize: "0.82rem", textDecoration: "underline", background: "none", border: "none", cursor: "pointer" }}
               onClick={() => {
                 setPasswordAlreadyUpdated(false);
-                try {
-                  sessionStorage.removeItem("origin_pwd_already_updated");
-                } catch {}
                 setMessage("");
               }}
             >
