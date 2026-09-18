@@ -6,7 +6,10 @@ import { getFirestore } from "firebase-admin/firestore";
 function adminApp() {
   const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  let privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+  if (privateKey) {
+    privateKey = privateKey.replace(/^["']|["']$/g, "").replace(/\\n/g, "\n");
+  }
   if (!projectId || projectId !== process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID)
     throw new Error("Configuración administrativa incompleta o proyecto incorrecto.");
   if (Boolean(clientEmail) !== Boolean(privateKey)) throw new Error("Configuración administrativa incompleta o proyecto incorrecto.");
